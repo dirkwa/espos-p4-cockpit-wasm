@@ -17,10 +17,16 @@ on:
         required: false
         default: "master"
 
+# Read-only by default; only the publish job below widens to write.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  # Builds with a read-only token. GITHUB_TOKEN's scope is per JOB, not per
+  # step, so a write-capable token anywhere in this job would be reachable by
+  # the CMake that runs from the caller-chosen firmware repo. Keeping the
+  # build and the push in separate jobs is what actually isolates it; the
+  # bundle crosses between them as an artifact.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +34,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           path: wasm
+          # Belt and braces: this job's token is read-only anyway, but the
+          # firmware build has no reason to be able to read it from a config.
+          persist-credentials: false
 
       - name: Checkout firmware
         uses: actions/checkout@v7
@@ -74,14 +83,44 @@ jobs:
           test -s public/jlp_wasm.wasm
           ls -l public/jlp_wasm.js public/jlp_wasm.wasm
 
-      # Per AGENTS.md: "The generated public/jlp_wasm.{js,wasm} are
-      # committed so the designer's copy-wasm.sh can pull them without an
-      # emscripten toolchain." Commits straight to whatever branch this
-      # workflow was dispatched on -- the operator picks the target by
-      # picking which branch to run it against, same as any other
-      # workflow_dispatch.
+      - name: Hand the bundle to the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-bundle
+          path: |
+            wasm/public/jlp_wasm.js
+            wasm/public/jlp_wasm.wasm
+          if-no-files-found: error
+          retention-days: 1
+
+  # Per AGENTS.md: "The generated public/jlp_wasm.{js,wasm} are committed so
+  # the designer's copy-wasm.sh can pull them without an emscripten
+  # toolchain." Commits to whatever branch the workflow was dispatched on --
+  # the operator picks the target by picking which branch to run against.
+  #
+  # A separate job so the write token never coexists with the firmware build:
+  # this one checks out only this repo and runs no caller-supplied code.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wasm-bundle
+          path: public
+
       - name: Commit rebuilt bundle
-        working-directory: wasm
+        # The inputs reach the shell as environment variables, never spliced
+        # into the script: ${{ }} expands before the shell parses the line, so
+        # a ref like `x";id;#` in the commit message would close the quote and
+        # run as a command.
+        env:
+          FIRMWARE_REPO: ${{ inputs.firmware_repo }}
+          FIRMWARE_REF: ${{ inputs.firmware_ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -90,5 +129,5 @@ jobs:
             echo "No changes to the WASM bundle -- nothing to commit."
             exit 0
           fi
-          git commit -m "build: rebuild WASM bundle against ${{ inputs.firmware_repo }}@${{ inputs.firmware_ref }}"
+          git commit -m "build: rebuild WASM bundle against ${FIRMWARE_REPO}@${FIRMWARE_REF}"
           git push
