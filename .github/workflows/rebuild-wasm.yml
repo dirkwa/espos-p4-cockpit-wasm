@@ -1,0 +1,133 @@
+name: Rebuild WASM preview bundle
+
+# Manual only, by design: this repo has no automatic trigger tying it to
+# firmware changes (see AGENTS.md's "No source forks" invariant -- there is
+# no dependency edge CI could watch, since widget_factory.cpp lives in a
+# different repo entirely). Run this whenever that repo's widget set moves
+# and the designer's WASM preview needs to catch up.
+on:
+  workflow_dispatch:
+    inputs:
+      firmware_repo:
+        description: "Firmware repo (owner/name) to build widget_factory.cpp from"
+        required: false
+        default: "BoatHacks/espos-p4-cockpit"
+      firmware_ref:
+        description: "Firmware branch, tag, or SHA to build against"
+        required: false
+        default: "master"
+
+# Read-only by default; only the publish job below widens to write.
+permissions:
+  contents: read
+
+jobs:
+  # Builds with a read-only token. GITHUB_TOKEN's scope is per JOB, not per
+  # step, so a write-capable token anywhere in this job would be reachable by
+  # the CMake that runs from the caller-chosen firmware repo. Keeping the
+  # build and the push in separate jobs is what actually isolates it; the
+  # bundle crosses between them as an artifact.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v7
+        with:
+          path: wasm
+          # Belt and braces: this job's token is read-only anyway, but the
+          # firmware build has no reason to be able to read it from a config.
+          persist-credentials: false
+
+      - name: Checkout firmware
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.firmware_repo }}
+          ref: ${{ inputs.firmware_ref }}
+          submodules: recursive
+          persist-credentials: false
+          path: firmware
+
+      - name: read pinned IDF version
+        id: idf
+        run: echo "version=$(cat firmware/.idf-version)" >> "$GITHUB_OUTPUT"
+
+      # The only reason this step runs at all: it makes the ESP-IDF
+      # component manager fetch LVGL + ArduinoJson into
+      # firmware/managed_components/, which CMakeLists.txt below reads
+      # from (see this repo's README "Dependencies" section) -- the
+      # resulting firmware app binary itself is discarded, never flashed,
+      # so no signing key is needed (CMake's throwaway dev key is fine).
+      - uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: ${{ steps.idf.outputs.version }}
+          target: esp32p4
+          command: idf.py build
+          path: firmware
+
+      - name: Set up emscripten
+        uses: mymindstorm/setup-emsdk@v14
+
+      # FW_CHECKOUT overrides CMakeLists.txt's default "../sensesp-p4-cockpit"
+      # relative path -- avoids depending on the checkout directory name
+      # matching the firmware repo's own name.
+      - name: Build WASM bundle
+        working-directory: wasm
+        run: |
+          emcmake cmake -B build -S . -DFW_CHECKOUT="${{ github.workspace }}/firmware"
+          cmake --build build -j
+
+      - name: Verify build output
+        working-directory: wasm
+        run: |
+          test -s public/jlp_wasm.js
+          test -s public/jlp_wasm.wasm
+          ls -l public/jlp_wasm.js public/jlp_wasm.wasm
+
+      - name: Hand the bundle to the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-bundle
+          path: |
+            wasm/public/jlp_wasm.js
+            wasm/public/jlp_wasm.wasm
+          if-no-files-found: error
+          retention-days: 1
+
+  # Per AGENTS.md: "The generated public/jlp_wasm.{js,wasm} are committed so
+  # the designer's copy-wasm.sh can pull them without an emscripten
+  # toolchain." Commits to whatever branch the workflow was dispatched on --
+  # the operator picks the target by picking which branch to run against.
+  #
+  # A separate job so the write token never coexists with the firmware build:
+  # this one checks out only this repo and runs no caller-supplied code.
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wasm-bundle
+          path: public
+
+      - name: Commit rebuilt bundle
+        # The inputs reach the shell as environment variables, never spliced
+        # into the script: ${{ }} expands before the shell parses the line, so
+        # a ref like `x";id;#` in the commit message would close the quote and
+        # run as a command.
+        env:
+          FIRMWARE_REPO: ${{ inputs.firmware_repo }}
+          FIRMWARE_REF: ${{ inputs.firmware_ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/jlp_wasm.js public/jlp_wasm.wasm
+          if git diff --cached --quiet; then
+            echo "No changes to the WASM bundle -- nothing to commit."
+            exit 0
+          fi
+          git commit -m "build: rebuild WASM bundle against ${FIRMWARE_REPO}@${FIRMWARE_REF}"
+          git push
