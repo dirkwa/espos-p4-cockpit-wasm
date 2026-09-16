@@ -14,8 +14,10 @@
 
 #include <stdint.h>
 
-/* ---- color depth: must match firmware (RGB565 on the P4 MIPI panel) ---- */
-#define LV_COLOR_DEPTH 16
+/* ---- color depth: must match firmware (RGB565 on the P4 MIPI panel) ----
+ * LV_COLOR_DEPTH is deprecated as of LVGL 9.4; LV_COLOR_FORMAT_DEFAULT is
+ * what current lvgl actually reads (see espos-p4-cockpit lv_conf.h). */
+#define LV_COLOR_FORMAT_DEFAULT LV_COLOR_FORMAT_RGB565
 
 /* ---- memory ---- */
 #define LV_USE_STDLIB_MALLOC LV_STDLIB_BUILTIN
