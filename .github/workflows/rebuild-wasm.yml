@@ -84,8 +84,14 @@ jobs:
       - name: Build WASM bundle
         working-directory: wasm
         run: |
+          # The SDL2 port is built on first use. With a cold cache and a
+          # parallel build, several compiler processes race to build it and
+          # one clears the port directory under another (an OSError from
+          # emscripten's ports code, seen on the first pull-request run).
+          # Build the port once, up front, then compile in parallel.
+          embuilder build sdl2
           emcmake cmake -B build -S . -DFW_CHECKOUT="${{ github.workspace }}/firmware"
-          cmake --build build -j
+          cmake --build build -j"$(nproc)"
 
       - name: Verify build output
         working-directory: wasm
