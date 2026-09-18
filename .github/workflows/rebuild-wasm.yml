@@ -42,7 +42,7 @@ jobs:
       FIRMWARE_REF: ${{ inputs.firmware_ref || 'main' }}
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           path: wasm
           # Belt and braces: this job's token is read-only anyway, but the
@@ -50,7 +50,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout firmware
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: ${{ env.FIRMWARE_REPO }}
           ref: ${{ env.FIRMWARE_REF }}
@@ -68,7 +68,7 @@ jobs:
       # from (see this repo's README "Dependencies" section) -- the
       # resulting firmware app binary itself is discarded, never flashed,
       # so no signing key is needed (CMake's throwaway dev key is fine).
-      - uses: espressif/esp-idf-ci-action@v1
+      - uses: espressif/esp-idf-ci-action@9d38657f3d789ca759b2b37aaf5ceffbc42c4f0d # v1 branch head, 2024-11-08
         with:
           esp_idf_version: ${{ steps.idf.outputs.version }}
           target: esp32p4
@@ -76,7 +76,7 @@ jobs:
           path: firmware
 
       - name: Set up emscripten
-        uses: mymindstorm/setup-emsdk@v14
+        uses: mymindstorm/setup-emsdk@6ab9eb1bda2574c4ddb79809fc9247783eaf9021 # v14
 
       # FW_CHECKOUT overrides CMakeLists.txt's default "../espos-p4-cockpit"
       # relative path -- avoids depending on the checkout directory name
@@ -101,7 +101,7 @@ jobs:
           ls -l public/jlp_wasm.js public/jlp_wasm.wasm
 
       - name: Hand the bundle to the publish job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: wasm-bundle
           path: |
@@ -125,9 +125,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: wasm-bundle
           path: public
