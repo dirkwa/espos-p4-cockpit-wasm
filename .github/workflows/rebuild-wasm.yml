@@ -11,11 +11,11 @@ on:
       firmware_repo:
         description: "Firmware repo (owner/name) to build widget_factory.cpp from"
         required: false
-        default: "BoatHacks/espos-p4-cockpit"
+        default: "dirkwa/espos-p4-cockpit"
       firmware_ref:
         description: "Firmware branch, tag, or SHA to build against"
         required: false
-        default: "master"
+        default: "main"
 
 # Read-only by default; only the publish job below widens to write.
 permissions:
