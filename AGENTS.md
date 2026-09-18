@@ -4,7 +4,7 @@ LVGL + JLP `widget_factory.cpp` compiled to WebAssembly via emscripten
 + SDL2, so the
 [signalk-hmi-designer](https://github.com/dirkwa/signalk-hmi-designer)
 canvas can render layouts pixel-identically to what the
-[sensesp-p4-cockpit](https://github.com/dirkwa/sensesp-p4-cockpit)
+[espos-p4-cockpit](https://github.com/dirkwa/espos-p4-cockpit)
 firmware draws — no device required.
 
 ## Architecture invariants
@@ -43,7 +43,7 @@ cmake --build build -j
 ```
 
 Build the firmware first (`idf.py build` in
-`../sensesp-p4-cockpit`) so the ESP-IDF component manager
+`../espos-p4-cockpit`) so the ESP-IDF component manager
 fetches the LVGL + ArduinoJson checkouts this CMakeLists points at into
 `managed_components/`.
 

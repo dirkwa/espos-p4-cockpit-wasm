@@ -78,7 +78,7 @@ jobs:
       - name: Set up emscripten
         uses: mymindstorm/setup-emsdk@v14
 
-      # FW_CHECKOUT overrides CMakeLists.txt's default "../sensesp-p4-cockpit"
+      # FW_CHECKOUT overrides CMakeLists.txt's default "../espos-p4-cockpit"
       # relative path -- avoids depending on the checkout directory name
       # matching the firmware repo's own name.
       - name: Build WASM bundle

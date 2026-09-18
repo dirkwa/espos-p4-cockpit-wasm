@@ -23,7 +23,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 
 # The firmware checkout we build against. Overridable so this does not depend
 # on a particular directory name next door.
-set(FW_CHECKOUT "${CMAKE_SOURCE_DIR}/../sensesp-p4-cockpit" CACHE PATH
+set(FW_CHECKOUT "${CMAKE_SOURCE_DIR}/../espos-p4-cockpit" CACHE PATH
     "espos-p4-cockpit checkout to take LVGL, ArduinoJson and the JLP sources from")
 
 # LVGL source — share with the firmware checkout so we stay in lockstep.
