@@ -1,11 +1,18 @@
 name: Rebuild WASM preview bundle
 
-# Manual only, by design: this repo has no automatic trigger tying it to
+# Publishing is manual, by design: this repo has no trigger tying it to
 # firmware changes (see AGENTS.md's "No source forks" invariant -- there is
 # no dependency edge CI could watch, since widget_factory.cpp lives in a
-# different repo entirely). Run this whenever that repo's widget set moves
+# different repo entirely). Run it whenever that repo's widget set moves
 # and the designer's WASM preview needs to catch up.
+#
+# Every pull request runs the build job alone, against firmware main.
+# widget_factory.cpp is compiled verbatim from the firmware, so a firmware
+# change can break this build without anyone touching this repo; a red
+# check here means the shims drifted, and says so the day it happens
+# rather than weeks later.
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       firmware_repo:
@@ -29,6 +36,10 @@ jobs:
   # bundle crosses between them as an artifact.
   build:
     runs-on: ubuntu-latest
+    env:
+      # Inputs are empty on pull_request runs; those build against main.
+      FIRMWARE_REPO: ${{ inputs.firmware_repo || 'dirkwa/espos-p4-cockpit' }}
+      FIRMWARE_REF: ${{ inputs.firmware_ref || 'main' }}
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v7
@@ -41,8 +52,8 @@ jobs:
       - name: Checkout firmware
         uses: actions/checkout@v7
         with:
-          repository: ${{ inputs.firmware_repo }}
-          ref: ${{ inputs.firmware_ref }}
+          repository: ${{ env.FIRMWARE_REPO }}
+          ref: ${{ env.FIRMWARE_REF }}
           submodules: recursive
           persist-credentials: false
           path: firmware
@@ -101,6 +112,8 @@ jobs:
   # A separate job so the write token never coexists with the firmware build:
   # this one checks out only this repo and runs no caller-supplied code.
   publish:
+    # Only a manual run publishes; a pull request just proves the build.
+    if: github.event_name == 'workflow_dispatch'
     needs: build
     runs-on: ubuntu-latest
     permissions:

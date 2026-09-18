@@ -56,3 +56,8 @@ fetches the LVGL + ArduinoJson checkouts this CMakeLists points at into
 - The generated `public/jlp_wasm.{js,wasm}` are committed so the
   designer's `copy-wasm.sh` can pull them without an emscripten
   toolchain — keep them in sync after any firmware widget change.
+- CI builds the bundle against `dirkwa/espos-p4-cockpit@main` on every
+  pull request, without publishing. A red build means the shims in
+  `src/shim` and `src/wasm_stubs.cpp` drifted from what
+  `widget_factory.cpp` now includes or calls; fix the shims, never fork
+  the firmware source. The manual `rebuild-wasm` run is what publishes.
