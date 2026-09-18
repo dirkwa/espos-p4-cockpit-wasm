@@ -116,6 +116,22 @@ const char* jlp_apply_layout(const char* json) {
     err_storage = "no screens";
     return err_storage.c_str();
   }
+  // The layout's `theme`, handled as layout_manager.cpp does on the
+  // device: `bg` paints the root (left transparent when omitted, so the
+  // dark default shows through), and apply_theme() sets the default
+  // fg/accent before any widget is built so they pick it up. A failed
+  // build puts the previous theme back, since the previous layout stays
+  // on screen and its widgets read the globals at update time.
+  JsonObjectConst theme = doc["theme"];
+  uint32_t theme_bg = 0;
+  if (!theme.isNull() &&
+      jlp::parse_hex_color(theme["bg"] | (const char*)nullptr, &theme_bg)) {
+    lv_obj_set_style_bg_color(staging, lv_color_hex(theme_bg), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(staging, LV_OPA_COVER, LV_PART_MAIN);
+  }
+  const jlp::ThemeColors prev_theme = jlp::current_theme();
+  jlp::apply_theme(theme);
+
   JsonArrayConst widgets = screens[0]["widgets"];
   std::set<std::string> live_paths;
   jlp::BuildCtx ctx{ staging, jlp::registry(), live_paths };
@@ -124,6 +140,7 @@ const char* jlp_apply_layout(const char* json) {
       std::string werr;
       lv_obj_t* w = jlp::build_widget(ctx, spec, &werr);
       if (!w) {
+        jlp::restore_theme(prev_theme);
         lv_obj_delete(staging);
         err_storage = std::string("widget: ") + werr;
         return err_storage.c_str();

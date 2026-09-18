@@ -28,6 +28,12 @@
 #include "audio/voice_control.h"
 #include "audio/chime.h"
 #include "net/drop_here.h"
+#include "cockpit_hal/ui.h"
+#include "esp_timer.h"
+#include "espos_sk.h"
+#include "net/stream_client.h"
+
+#include <emscripten.h>
 
 #include "lvgl.h"
 
@@ -234,11 +240,16 @@ NotificationsRegistry::snapshot(bool include_cleared) const {
   return out;
 }
 
-void NotificationsRegistry::acknowledge(const std::string& path_after_prefix) {
+bool NotificationsRegistry::acknowledge(const std::string& path_after_prefix) {
   auto it = map_.find(path_after_prefix);
-  if (it == map_.end()) return;
+  if (it == map_.end()) return false;
   acked_[path_after_prefix] = it->second.state;
   fire_observers();
+  // The firmware answers whether the caller should also send the SK
+  // ack delta, and says no for a path it has seen re-assert from the
+  // bus. Nothing re-asserts in the preview, so a known path always
+  // gets the ack.
+  return true;
 }
 
 bool NotificationsRegistry::is_acknowledged(
@@ -337,4 +348,78 @@ void put_notification_ack(const std::string& path_after_prefix) {
   notifications().acknowledge(path_after_prefix);
 }
 
+// ----- stream client ----------------------------------------------------
+// The MJPEG stream widget's transport. The designer previews stream
+// widgets as static labels, so nothing ever starts a stream here; the
+// stubs exist so widget_factory.cpp links.
+
+bool stream_client_start(const char* /*host*/, uint16_t /*port*/,
+                         uint32_t /*width*/, uint32_t /*height*/,
+                         StreamFrameCb /*cb*/) {
+  return false;
+}
+void stream_client_stop() {}
+void stream_client_set_paused(bool /*paused*/) {}
+bool stream_client_stop_diagnostic() { return false; }
+bool stream_client_peer(uint32_t* /*addr_be*/) { return false; }
+StreamStats stream_client_stats() { return StreamStats{}; }
+
 }  // namespace jlp
+
+// ----- ESP-IDF / espOS ---------------------------------------------------
+
+extern "C" int64_t esp_timer_get_time(void) {
+  return static_cast<int64_t>(emscripten_get_now() * 1000.0);
+}
+
+extern "C" esp_err_t espos_sk_get_server(espos_sk_server_t* /*out*/) {
+  return ESP_ERR_NOT_FOUND;  // no SignalK client in the preview
+}
+
+// ----- cockpit_hal::ui --------------------------------------------------
+// The firmware marshals work onto its UI task; the preview has one
+// thread and LVGL's own timers, so a periodic callback is an lv_timer
+// keyed by a handle the caller can cancel.
+
+namespace cockpit_hal {
+namespace ui {
+
+namespace {
+struct Periodic {
+  lv_timer_t* timer;
+  std::function<void()> fn;
+};
+std::map<uint32_t, Periodic>& periodics() {
+  static std::map<uint32_t, Periodic> m;
+  return m;
+}
+uint32_t next_handle = 1;
+}  // namespace
+
+void post(std::function<void()> fn) {
+  if (fn) fn();  // one thread: this is the UI thread
+}
+
+uint32_t every(uint32_t ms, std::function<void()> fn) {
+  const uint32_t h = next_handle++;
+  auto& slot = periodics()[h];
+  slot.fn = std::move(fn);
+  slot.timer = lv_timer_create(
+      [](lv_timer_t* t) {
+        auto* p = static_cast<Periodic*>(lv_timer_get_user_data(t));
+        if (p && p->fn) p->fn();
+      },
+      ms, &slot);
+  return h;
+}
+
+void cancel(uint32_t handle) {
+  auto& m = periodics();
+  auto it = m.find(handle);
+  if (it == m.end()) return;
+  lv_timer_delete(it->second.timer);
+  m.erase(it);
+}
+
+}  // namespace ui
+}  // namespace cockpit_hal
