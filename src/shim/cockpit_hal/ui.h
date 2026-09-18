@@ -8,8 +8,13 @@
 #include <cstdint>
 #include <functional>
 
+#include "cockpit_hal/display_driver.h"
+
 namespace cockpit_hal {
 namespace ui {
+
+/** The panel's display; none in the preview, so null. */
+DisplayDriver* display();
 
 /** Run fn on the UI thread; here, right away. */
 void post(std::function<void()> fn);
