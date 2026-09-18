@@ -7,9 +7,7 @@
 #pragma once
 #include <cstdint>
 
-typedef int esp_err_t;
-#define ESP_OK 0
-#define ESP_ERR_NOT_FOUND 0x105
+#include "esp_err.h"
 
 #define ESPOS_SK_HOST_MAX 64
 #define ESPOS_SK_SELF_MAX 64

@@ -31,6 +31,8 @@
 #include "cockpit_hal/ui.h"
 #include "esp_timer.h"
 #include "espos_sk.h"
+#include "espos_cfg_keys.h"
+#include "espos_config.h"
 #include "net/stream_client.h"
 
 #include <emscripten.h>
@@ -376,6 +378,23 @@ extern "C" esp_err_t espos_sk_get_server(espos_sk_server_t* /*out*/) {
   return ESP_ERR_NOT_FOUND;  // no SignalK client in the preview
 }
 
+// The settings store behind the @brightness slider: answer with the
+// descriptor default, accept writes, never fire a change. The designer
+// feeds the real panel's level through the "@brightness" subject.
+extern "C" esp_err_t espos_config_get_i32(const char* /*ns*/, const char* /*key*/,
+                                          int32_t* out) {
+  if (out) *out = 95;
+  return ESP_OK;
+}
+extern "C" esp_err_t espos_config_set_i32(const char* /*ns*/, const char* /*key*/,
+                                          int32_t /*v*/) {
+  return ESP_OK;
+}
+extern "C" esp_err_t espos_config_subscribe(espos_config_change_cb_t /*cb*/,
+                                            void* /*arg*/) {
+  return ESP_OK;
+}
+
 // ----- cockpit_hal::ui --------------------------------------------------
 // The firmware marshals work onto its UI task; the preview has one
 // thread and LVGL's own timers, so a periodic callback is an lv_timer
@@ -399,6 +418,8 @@ uint32_t next_handle = 1;
 void post(std::function<void()> fn) {
   if (fn) fn();  // one thread: this is the UI thread
 }
+
+DisplayDriver* display() { return nullptr; }  // no backlight to preview on
 
 uint32_t every(uint32_t ms, std::function<void()> fn) {
   const uint32_t h = next_handle++;
