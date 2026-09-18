@@ -90,15 +90,15 @@ mod._free(p)
 
 ## Dependencies
 
-The build pulls source from the firmware's PIO checkout:
-- LVGL → `../sensesp-p4-cockpit/managed_components/lvgl__lvgl`
-- widget_factory.cpp → `../sensesp-p4-cockpit/main/jlp/widgets/widget_factory.cpp`
-- ArduinoJson → `../sensesp-p4-cockpit/managed_components/bblanchon__arduinojson`
+The build pulls source from the firmware checkout next door:
+- LVGL → `../espos-p4-cockpit/managed_components/lvgl__lvgl`
+- widget_factory.cpp → `../espos-p4-cockpit/main/jlp/widgets/widget_factory.cpp`
+- ArduinoJson → `../espos-p4-cockpit/managed_components/bblanchon__arduinojson`
 
 So **build the firmware once first** before building this:
 
 ```bash
-cd ../sensesp-p4-cockpit && idf.py build
+cd ../espos-p4-cockpit && idf.py build
 ```
 
 ## What this is not
@@ -132,8 +132,8 @@ Pixel-perfect parity depends on both.
 
 ## License
 
-sensesp-p4-cockpit-wasm 1.0.0 and later is **source available, not open
-source**. See [LICENSE.md](LICENSE.md).
+espos-p4-cockpit-wasm (sensesp-p4-cockpit-wasm before the espOS port)
+1.0.0 and later is **source available, not open source**. See [LICENSE.md](LICENSE.md).
 
 **You may**, free of charge: run it on your own boat or fleet, private or
 commercial; use it for internal company operations; modify it for your own use;

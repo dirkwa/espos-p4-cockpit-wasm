@@ -1,8 +1,8 @@
 # Third-party notices
 
 The license in [LICENSE.md](LICENSE.md) covers the code written for
-sensesp-p4-cockpit-wasm and the firmware sources it compiles from
-[sensesp-p4-cockpit](https://github.com/dirkwa/sensesp-p4-cockpit) (same
+espos-p4-cockpit-wasm and the firmware sources it compiles from
+[espos-p4-cockpit](https://github.com/dirkwa/espos-p4-cockpit) (same
 license).
 
 The prebuilt `public/jlp_wasm.wasm` / `public/jlp_wasm.js` additionally
