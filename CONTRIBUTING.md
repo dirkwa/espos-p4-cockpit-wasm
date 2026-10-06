@@ -1,7 +1,7 @@
 # Contributing
 
 Bug reports, feature requests and pull requests are welcome at
-<https://github.com/dirkwa/espos-p4-cockpit-wasm>.
+<https://github.com/signalk-espOS/espos-p4-cockpit-wasm>.
 
 Before opening a pull request, rebuild the wasm (see "Build" in the README)
 and check the smoke test in `public/index.html` still renders. Keep
