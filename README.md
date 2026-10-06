@@ -10,7 +10,7 @@ P4 panel would draw — no SVG approximation, no font drift, no
 LVGL-version skew.
 
 This is the default preview mode in
-[signalk-hmi-designer](https://github.com/dirkwa/signalk-hmi-designer);
+[signalk-hmi-designer](https://github.com/signalk-espOS/signalk-hmi-designer);
 the live-mirror mode (HTTP-polled `/screenshot?fmt=jpeg` from a real
 device) is the fallback when a panel happens to be connected.
 
