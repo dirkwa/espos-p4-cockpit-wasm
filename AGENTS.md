@@ -2,7 +2,7 @@
 
 LVGL + JLP `widget_factory.cpp` compiled to WebAssembly via emscripten
 + SDL2, so the
-[signalk-hmi-designer](https://github.com/signalk-espOS/signalk-hmi-designer)
+[signalk-hmi-designer](https://github.com/signalk-espOS/signalk-espos-hmi-designer)
 canvas can render layouts pixel-identically to what the
 [espos-p4-cockpit](https://github.com/dirkwa/espos-p4-cockpit)
 firmware draws — no device required.
